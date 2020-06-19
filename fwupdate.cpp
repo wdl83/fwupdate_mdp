@@ -25,6 +25,16 @@ bool inRange(V value)
         && std::numeric_limits<T>::max() >= value;
 }
 
+uint8_t lowByte(uint16_t word)
+{
+    return word & 0xFF;
+}
+
+uint8_t highByte(uint16_t word)
+{
+    return word >> 8;
+}
+
 using json = nlohmann::json;
 
 const char *const ADDR = "addr";
@@ -35,6 +45,8 @@ const char *const TIMEOUT_MS = "timeout_ms";
 const char *const VALUE = "value";
 
 constexpr auto FCODE_RD_HOLDING_REGISTERS = 3;
+constexpr auto FCODE_WR_REGISTER = 6;
+constexpr auto FCODE_WR_REGISTERS = 16;
 constexpr auto FCODE_RD_BYTES = 65;
 constexpr auto FCODE_WR_BYTES = 66;
 
@@ -96,13 +108,15 @@ FlashPageSeq toFlashPageSeq(
     // flash page size 64 words (128 bytes)
     const uint16_t flashPageSize = 128;
     FlashPageSeq flashPageSeq;
-    auto currRecord = recordBegin;
 
-    while(currRecord != recordEnd)
+    for(auto currRecord = recordBegin; currRecord != recordEnd; ++currRecord)
     {
         if(ihex::RecordType::EndOfFile == currRecord->type()) break;
-
-        ENSURE(ihex::RecordType::Data == currRecord->type(), RuntimeError);
+        if(ihex::RecordType::Data != currRecord->type())
+        {
+            std::cout << "skipped " << *currRecord << std::endl;
+            continue;
+        }
 
         const auto dataBegin = std::begin(currRecord->data());
         const auto dataEnd = std::end(currRecord->data());
@@ -139,7 +153,6 @@ FlashPageSeq toFlashPageSeq(
             currFlashPage.append(*dataCurr);
             ++dataCurr;
         }
-        ++currRecord;
     }
     return flashPageSeq;
 }
@@ -154,14 +167,16 @@ json toModbusRequest(const FlashPage &flashPage, uint8_t slaveID)
             {SLAVE, slaveID},
             {FCODE, FCODE_WR_BYTES},
             {ADDR, RTU_ADDR_BASE + 3},
-            {COUNT, 2},
+            {COUNT, sizeof(uint16_t)},
             {
                 VALUE,
                 std::vector<uint8_t>
                 {
-                    uint8_t(flashPage.addr() >> 8),
-                    uint8_t(flashPage.addr() & uint8_t{0xFF}),
-                }}
+                    /* flash_page_addr is uint16_t little-endian */
+                    lowByte(flashPage.addr()),
+                    highByte(flashPage.addr())
+                }
+            }
         },
         {
             {SLAVE, slaveID},
@@ -173,8 +188,6 @@ json toModbusRequest(const FlashPage &flashPage, uint8_t slaveID)
         }
     };
 
-    //std::cout << flashPage << std::endl;
-    //std::cout << "request " << req.dump() << std::endl;
     return req;
 }
 
@@ -247,7 +260,7 @@ uint16_t fetchFlashPageUpdatedNum(
     {
         {
             {SLAVE, slaveID},
-            {FCODE, FCODE_RD_HOLDING_REGISTERS},
+            {FCODE, FCODE_RD_BYTES},
             {ADDR, RTU_ADDR_BASE + 2},
             {COUNT, 1}
         }
