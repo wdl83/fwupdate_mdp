@@ -11,6 +11,7 @@
 #include <nlohmann/json.hpp>
 
 #include "Ensure.h"
+#include "Trace.h"
 #include "flash.h"
 #include "ihex.h"
 #include "mdp/Client.h"
@@ -114,7 +115,7 @@ FlashPageSeq toFlashPageSeq(
         if(ihex::RecordType::EndOfFile == currRecord->type()) break;
         if(ihex::RecordType::Data != currRecord->type())
         {
-            std::cout << "skipped " << *currRecord << std::endl;
+            TRACE(TraceLevel::Warning, "skipped ", *currRecord);
             continue;
         }
 
@@ -193,8 +194,6 @@ json toModbusRequest(const FlashPage &flashPage, uint8_t slaveID)
 
 void validateReply(const json &request, const json &reply)
 {
-   // std::cout << "reply " << reply.dump() << std::endl;
-
     // request and reply should be arrays of same length
     ENSURE(reply.is_array(), RuntimeError);
     ENSURE(request.size() == reply.size(), RuntimeError);
@@ -216,8 +215,8 @@ void handleFlashPageFill(
     const auto replyPayload =
         client.exec(brokerAddress, serviceName, {std::move(requestPayload)});
 
-    ENSURE(!replyPayload.empty(), RuntimeError);
-    ENSURE(1 == int(replyPayload.size()), RuntimeError);
+    ENSURE(2 == int(replyPayload.size()), RuntimeError);
+    ENSURE(MDP::Broker::Signature::statusSucess == replyPayload[0], RuntimeError);
 
     validateReply(request, json::parse(replyPayload.back()));
 }
@@ -245,8 +244,8 @@ void handleFlashPageUpdate(
     const auto replyPayload =
         client.exec(brokerAddress, serviceName, {std::move(requestPayload)});
 
-    ENSURE(!replyPayload.empty(), RuntimeError);
-    ENSURE(1 == int(replyPayload.size()), RuntimeError);
+    ENSURE(2 == int(replyPayload.size()), RuntimeError);
+    ENSURE(MDP::Broker::Signature::statusSucess == replyPayload[0], RuntimeError);
 
     validateReply(request, json::parse(replyPayload.back()));
 }
@@ -273,8 +272,8 @@ uint16_t fetchFlashPageUpdatedNum(
     const auto replyPayload =
         client.exec(brokerAddress, serviceName, {std::move(requestPayload)});
 
-    ENSURE(!replyPayload.empty(), RuntimeError);
-    ENSURE(1 == int(replyPayload.size()), RuntimeError);
+    ENSURE(2 == int(replyPayload.size()), RuntimeError);
+    ENSURE(MDP::Broker::Signature::statusSucess == replyPayload[0], RuntimeError);
 
     const auto reply = json::parse(replyPayload.back());
 
@@ -313,8 +312,8 @@ void handleReboot(
     const auto replyPayload =
         client.exec(brokerAddress, serviceName, {std::move(requestPayload)});
 
-    ENSURE(!replyPayload.empty(), RuntimeError);
-    ENSURE(1 == int(replyPayload.size()), RuntimeError);
+    ENSURE(2 == int(replyPayload.size()), RuntimeError);
+    ENSURE(MDP::Broker::Signature::statusSucess == replyPayload[0], RuntimeError);
 
     validateReply(request, json::parse(replyPayload.back()));
 }
@@ -332,9 +331,12 @@ void firmwareUpdate(
     {
         uint16_t flashPageUpdatedNum = 0;
 
+        TRACE(TraceLevel::Info, "ihex ", recordSeq.size(), " records");
+        TRACE(TraceLevel::Info, "flush ", flashPageSeq.size(), " pages");
+
         for(const auto &flashPage : flashPageSeq)
         {
-            std::cout << "flashing " << flashPage << std::endl;
+            TRACE(TraceLevel::Debug, "flashing page[", flashPageUpdatedNum, "] ", flashPage);
 
             try
             {
@@ -356,6 +358,7 @@ void firmwareUpdate(
             }
         }
 
+        TRACE(TraceLevel::Info, "rebooting");
         handleReboot(brokerAddress, serviceName, slaveID);
     }
     catch(std::exception &except)
