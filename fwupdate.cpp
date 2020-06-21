@@ -52,8 +52,14 @@ constexpr auto FCODE_RD_BYTES = 65;
 constexpr auto FCODE_WR_BYTES = 66;
 
 constexpr uint8_t FLAG_FLASH_PAGE_UPDATE = 0x01;
+constexpr uint8_t FLAG_FLASH_PAGE_RNW = 0x02;
+
+constexpr uint8_t FLAG_EEPROM_UPDATE = 0x04;
+constexpr uint8_t FLAG_EEPROM_RNW = 0x08;
+
 constexpr uint8_t FLAG_WATCHDOG_DISABLE = 0x10;
 constexpr uint8_t FLAG_WATCHDOG_RESET = 0x20;
+
 constexpr uint8_t FLAG_REBOOT = 0x80;
 
 void help(const char *argv0, const char *message = nullptr)
@@ -169,7 +175,7 @@ json toModbusRequest(const FlashPage &flashPage, uint8_t slaveID)
         {
             {SLAVE, slaveID},
             {FCODE, FCODE_WR_BYTES},
-            {ADDR, RTU_ADDR_BASE + 3},
+            {ADDR, RTU_ADDR_BASE + 6},
             {COUNT, sizeof(uint16_t)},
             {
                 VALUE,
@@ -185,7 +191,7 @@ json toModbusRequest(const FlashPage &flashPage, uint8_t slaveID)
             {SLAVE, slaveID},
             {FCODE, FCODE_WR_BYTES},
             {TIMEOUT_MS, 1000},
-            {ADDR, RTU_ADDR_BASE + 5},
+            {ADDR, RTU_ADDR_BASE + 8},
             {COUNT, flashPage.size()},
             {VALUE, flashPage.data()}
         }
@@ -252,7 +258,7 @@ void handleFlashPageUpdate(
     validateReply(request, json::parse(replyPayload.back()));
 }
 
-uint16_t fetchFlashPageUpdatedNum(
+uint16_t fetchFlashPageWrNum(
     const std::string &brokerAddress,
     const std::string &serviceName,
     uint8_t slaveID)
@@ -263,7 +269,7 @@ uint16_t fetchFlashPageUpdatedNum(
             {SLAVE, slaveID},
             {FCODE, FCODE_RD_BYTES},
             {ADDR, RTU_ADDR_BASE + 2},
-            {COUNT, 1}
+            {COUNT, 2}
         }
     };
 
@@ -282,13 +288,15 @@ uint16_t fetchFlashPageUpdatedNum(
     validateReply(request, reply);
 
     ENSURE(reply[0][VALUE].is_array(), RuntimeError);
-    ENSURE(1 == reply[0][VALUE].size(), RuntimeError);
+    ENSURE(2 == reply[0][VALUE].size(), RuntimeError);
 
-    const auto value = reply[0][VALUE][0].get<int>();
+    const auto lowByteValue = reply[0][VALUE][0].get<int>();
+    const auto highByteValue = reply[0][VALUE][1].get<int>();
 
-    ENSURE(inRange<uint16_t>(value), RuntimeError);
+    ENSURE(inRange<uint8_t>(lowByteValue), RuntimeError);
+    ENSURE(inRange<uint8_t>(highByteValue), RuntimeError);
 
-    return uint16_t(value);
+    return uint16_t((highByteValue << 8) | lowByteValue);
 }
 
 void handleWatchdogReset(
@@ -373,7 +381,7 @@ void firmwareUpdate(
             {
                ENSURE(
                    flashPageUpdatedNum
-                   == fetchFlashPageUpdatedNum(brokerAddress, serviceName, slaveID),
+                   == fetchFlashPageWrNum(brokerAddress, serviceName, slaveID),
                    RuntimeError);
 
                 handleWatchdogReset(brokerAddress, serviceName, slaveID);
