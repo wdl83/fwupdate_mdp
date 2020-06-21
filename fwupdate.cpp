@@ -51,8 +51,10 @@ constexpr auto FCODE_WR_REGISTERS = 16;
 constexpr auto FCODE_RD_BYTES = 65;
 constexpr auto FCODE_WR_BYTES = 66;
 
-constexpr uint8_t FLAG_FLASH_PAGE_UPDATE = 0x1;
-constexpr uint8_t FLAG_REBOOT = 0x2;
+constexpr uint8_t FLAG_FLASH_PAGE_UPDATE = 0x01;
+constexpr uint8_t FLAG_WATCHDOG_DISABLE = 0x10;
+constexpr uint8_t FLAG_WATCHDOG_RESET = 0x20;
+constexpr uint8_t FLAG_REBOOT = 0x80;
 
 void help(const char *argv0, const char *message = nullptr)
 {
@@ -289,6 +291,35 @@ uint16_t fetchFlashPageUpdatedNum(
     return uint16_t(value);
 }
 
+void handleWatchdogReset(
+    const std::string &brokerAddress,
+    const std::string &serviceName,
+    uint8_t slaveID)
+{
+    json request
+    {
+        {
+            {SLAVE, slaveID},
+            {FCODE, FCODE_WR_BYTES},
+            {ADDR, RTU_ADDR_BASE + 0},
+            {COUNT, 1},
+            {VALUE,  std::vector<uint8_t>{FLAG_WATCHDOG_RESET}}
+        }
+    };
+
+    auto requestPayload = std::string{request.dump()};
+
+    Client client;
+
+    const auto replyPayload =
+        client.exec(brokerAddress, serviceName, {std::move(requestPayload)});
+
+    ENSURE(2 == int(replyPayload.size()), RuntimeError);
+    ENSURE(MDP::Broker::Signature::statusSucess == replyPayload[0], RuntimeError);
+
+    validateReply(request, json::parse(replyPayload.back()));
+}
+
 void handleReboot(
     const std::string &brokerAddress,
     const std::string &serviceName,
@@ -345,6 +376,7 @@ void firmwareUpdate(
                    == fetchFlashPageUpdatedNum(brokerAddress, serviceName, slaveID),
                    RuntimeError);
 
+                handleWatchdogReset(brokerAddress, serviceName, slaveID);
                 handleFlashPageFill(brokerAddress, serviceName, slaveID, flashPage);
                 handleFlashPageUpdate(brokerAddress, serviceName, slaveID);
                 ++flashPageUpdatedNum;
