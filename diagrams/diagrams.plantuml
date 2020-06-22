@@ -1,0 +1,36 @@
+@startuml firmware_update
+participant fwupdate_mdp
+participant Broker
+participant modbus_mdp
+participant "AVR with bootloader" as modbus_c
+
+fwupdate_mdp -> Broker: request [json]
+
+hnote over fwupdate_mdp
+request:
+- FLASH read/write
+- EEPROM read/write
+- watchdog disable/reset
+- reboot
+end note
+
+activate fwupdate_mdp
+Broker -> modbus_mdp: forward request [json]
+activate modbus_mdp
+
+modbus_mdp -> modbus_c: request [serial]
+activate modbus_c
+
+hnote over modbus_mdp, modbus_c
+Modbus RTU
+over Serial (RS485)
+end note
+
+modbus_c -> modbus_mdp: reply [serial]
+deactivate modbus_c
+
+modbus_mdp -> Broker: response [json]
+deactivate modbus_mdp
+Broker -> fwupdate_mdp: forward response [json]
+deactivate fwupdate_mdp
+@enduml
