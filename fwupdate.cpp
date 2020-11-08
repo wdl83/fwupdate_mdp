@@ -417,7 +417,7 @@ int main(int argc, char *const argv[])
     std::string fileName;
     int slaveID = -1;
 
-    for(char c; -1 != (c = ::getopt(argc, argv, "ha:s:f:t:"));)
+    for(int c; -1 != (c = ::getopt(argc, argv, "ha:s:f:t:"));)
     {
         switch(c)
         {
