@@ -45,9 +45,6 @@ const char *const SLAVE = "slave";
 const char *const TIMEOUT_MS = "timeout_ms";
 const char *const VALUE = "value";
 
-constexpr auto FCODE_RD_HOLDING_REGISTERS = 3;
-constexpr auto FCODE_WR_REGISTER = 6;
-constexpr auto FCODE_WR_REGISTERS = 16;
 constexpr auto FCODE_RD_BYTES = 65;
 constexpr auto FCODE_WR_BYTES = 66;
 
@@ -464,12 +461,12 @@ int main(int argc, char *const argv[])
     }
     catch(const std::exception &except)
     {
-        std::cerr << "std exception " << except.what() << std::endl;
+        TRACE(TraceLevel::Error, except.what());
         return EXIT_FAILURE;
     }
     catch(...)
     {
-        std::cerr << "unsupported exception" << std::endl;
+        TRACE(TraceLevel::Error, "unsupported exception");
         return EXIT_FAILURE;
     }
 

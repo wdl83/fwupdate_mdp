@@ -1,6 +1,7 @@
 CC=clang
 
 FLAGS = \
+	-DENABLE_TRACE \
 	-I ../ \
 	-I ../zmqpp-root/include \
 	-Wall \
@@ -12,7 +13,6 @@ FLAGS = \
 
 ifndef RELEASE
 	FLAGS +=  \
-		-DENABLE_TRACE \
 		-O0 \
 		-fno-omit-frame-pointer \
 		-fsanitize=address
