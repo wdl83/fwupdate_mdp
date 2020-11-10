@@ -5,6 +5,7 @@
 #include <iterator>
 #include <limits>
 #include <sstream>
+#include <thread>
 
 #include <unistd.h>
 
@@ -215,6 +216,8 @@ void handleFlashPageFill(
     auto request = toModbusRequest(flashPage, slaveID);
     auto requestPayload = std::string{request.dump()};
 
+    TRACE(TraceLevel::Debug, flashPage, " ", requestPayload);
+
     Client client;
 
     const auto replyPayload =
@@ -244,6 +247,8 @@ void handleFlashPageUpdate(
 
     auto requestPayload = std::string{request.dump()};
 
+    TRACE(TraceLevel::Debug, requestPayload);
+
     Client client;
 
     const auto replyPayload =
@@ -271,6 +276,8 @@ uint16_t fetchFlashPageWrNum(
     };
 
     auto requestPayload = std::string{request.dump()};
+
+    TRACE(TraceLevel::Debug, requestPayload);
 
     Client client;
 
@@ -316,6 +323,8 @@ void handleWatchdogReset(
 
     Client client;
 
+    TRACE(TraceLevel::Debug, requestPayload);
+
     const auto replyPayload =
         client.exec(brokerAddress, serviceName, {std::move(requestPayload)});
 
@@ -343,6 +352,8 @@ void handleReboot(
 
     auto requestPayload = std::string{request.dump()};
 
+    TRACE(TraceLevel::Debug, requestPayload);
+
     Client client;
 
     const auto replyPayload =
@@ -363,7 +374,6 @@ void firmwareUpdate(
     auto recordSeq = parseRecordSeq(file);
     auto flashPageSeq = toFlashPageSeq(std::begin(recordSeq), std::end(recordSeq));
 
-    try
     {
         uint16_t flashPageUpdatedNum = 0;
 
@@ -372,7 +382,7 @@ void firmwareUpdate(
 
         for(const auto &flashPage : flashPageSeq)
         {
-            TRACE(TraceLevel::Debug, "flashing page[", flashPageUpdatedNum, "] ", flashPage);
+            TRACE(TraceLevel::Info, "flashing page[", flashPageUpdatedNum, "] ", flashPage);
 
             try
             {
@@ -385,23 +395,21 @@ void firmwareUpdate(
                 handleFlashPageFill(brokerAddress, serviceName, slaveID, flashPage);
                 handleFlashPageUpdate(brokerAddress, serviceName, slaveID);
                 ++flashPageUpdatedNum;
+                std::this_thread::sleep_for(std::chrono::milliseconds{250});
             }
             catch(std::exception &except)
             {
-                std::cerr
-                    << "std exception " << except.what()
-                    << " while flashing " << flashPage << std::endl;
+                /* TODO: impl. retry & recovery */
+                TRACE(
+                    TraceLevel::Error,
+                    except.what(),
+                    " while flashing ", flashPage);
                 throw;
             }
         }
 
         TRACE(TraceLevel::Info, "rebooting");
         handleReboot(brokerAddress, serviceName, slaveID);
-    }
-    catch(std::exception &except)
-    {
-        std::cerr << "std exception " << except.what();
-        throw;
     }
 }
 
