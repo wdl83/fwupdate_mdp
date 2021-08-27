@@ -3,4 +3,4 @@
 ![diagram](diagrams/firmware_update.png)
 
 ## author:
-Wlodzimierz Lipert https://github.com/vlad83
+Wlodzimierz Lipert https://github.com/wdl83
