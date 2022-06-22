@@ -1,0 +1,6 @@
+[submodule "mdp"]
+	path = mdp
+	url = https://github.com/wdl83/mdp
+[submodule "zmqpp"]
+	path = zmqpp
+	url = https://github.com/zeromq/zmqpp

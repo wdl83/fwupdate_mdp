@@ -1,6 +1,9 @@
-all: fwupdate.Makefile
+all: \
+	fwupdate.Makefile \
+	zmqpp/Makefile
+	make -C zmqpp
+	make PREFIX=${PWD}/zmqpp-root install -C zmqpp
 	make -f fwupdate.Makefile
 
 clean:
-	rm *.o -f
-	rm *.elf -f
+	make -f fwupdate.Makefile clean
