@@ -90,20 +90,39 @@ void dump(std::ostream &os, const uint8_t *begin, const uint8_t *const end)
     os.flags(flags);
 }
 
-Modbus::RTU::CRC calcChecksum(const RecordSeq &seq)
+Modbus::RTU::CRC calcChecksum(RecordSeq seq)
 {
+    auto begin = std::begin(seq);
+
+    /* remove non-data segments */
+    while(begin != std::end(seq))
+    {
+        if(ihex::RecordType::Data != begin->type()) begin = seq.erase(begin);
+        else ++begin;
+    }
+
+    /* crc16 should be calculated based on fw data bytes from lower to higher
+     * addresses. Sort sequence to ensure ascending order */
+    std::sort(
+        std::begin(seq), std::end(seq),
+        [](const ihex::Record &x, const ihex::Record &y)
+        {return x.addr() < y.addr();});
+
     std::vector<uint8_t> data;
 
-    for(auto begin = std::begin(seq); std::end(seq) != begin; ++begin)
-    {
-        if(ihex::RecordType::EndOfFile == begin->type()) break;
-        if(ihex::RecordType::Data != begin->type())
-        {
-            TRACE(TraceLevel::Warning, "skipped ", *begin);
-            continue;
-        }
+    begin = std::begin(seq);
 
+    while(std::end(seq) != begin)
+    {
         append(data, begin->data());
+
+        if(std::begin(seq) != begin)
+        {
+            const auto prev = std::prev(begin);
+            const auto continuous = prev->addr() + prev->size() == begin->addr();
+            ENSURE(continuous, RuntimeError);
+        }
+        ++begin;
     }
 
     //dump(std::cout, data.data(), data.data() + data.size());
