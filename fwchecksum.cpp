@@ -14,7 +14,7 @@
 #include "flash.h"
 #include "ihex.h"
 
-#include "modbus_mdp/crc.h"
+#include "crc.h"
 
 namespace {
 

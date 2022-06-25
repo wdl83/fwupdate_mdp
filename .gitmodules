@@ -4,3 +4,9 @@
 [submodule "zmqpp"]
 	path = zmqpp
 	url = https://github.com/zeromq/zmqpp
+[submodule "modbus_tools"]
+	path = modbus_tools
+	url = https://github.com/wdl83/modbus_tools
+[submodule "ensure"]
+	path = ensure
+	url = https://github.com/wdl83/ensure
