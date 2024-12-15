@@ -3,7 +3,7 @@
 	url = https://github.com/wdl83/mdp
 [submodule "zmqpp"]
 	path = zmqpp
-	url = https://github.com/zeromq/zmqpp
+	url = https://github.com/wdl83/zmqpp
 [submodule "modbus_tools"]
 	path = modbus_tools
 	url = https://github.com/wdl83/modbus_tools
