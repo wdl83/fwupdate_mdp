@@ -1,12 +1,8 @@
-ifndef OBJ_DIR
-OBJ_DIR = ${PWD}/obj
-export OBJ_DIR
-endif
+OBJ_DIR ?= ${PWD}/obj
+DST_DIR ?= ${PWD}/dst
 
-ifndef DST_DIR
-DST_DIR = ${PWD}/dst
+export OBJ_DIR
 export DST_DIR
-endif
 
 all: \
 	fwchecksum.Makefile \
@@ -32,4 +28,4 @@ clean:
 	make -f fwupdate.Makefile clean
 
 purge:
-	rm $(OBJ_DIR) -rf
+	rm ${OBJ_DIR} -rf
