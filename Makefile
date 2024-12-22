@@ -4,7 +4,7 @@ DST_DIR ?= ${PWD}/dst
 export OBJ_DIR
 export DST_DIR
 
-all: \
+build: \
 	fwchecksum.Makefile \
 	fwupdate.Makefile \
 	zmqpp/Makefile
@@ -14,18 +14,16 @@ all: \
 	make -f fwupdate.Makefile
 	make -f fwchecksum.Makefile
 
-install: \
-	fwchecksum.Makefile \
-	fwupdate.Makefile \
-	zmqpp/Makefile
-	make -C zmqpp
-	mkdir -p ${OBJ_DIR}/zmqpp
+install: build
 	make PREFIX=${OBJ_DIR}/zmqpp install -C zmqpp
 	make -f fwupdate.Makefile install
 	make -f fwchecksum.Makefile install
 
 clean:
+	make -C zmqpp clean
 	make -f fwupdate.Makefile clean
+	make -f fwchecksum.Makefile clean
 
-purge:
+purge: clean
 	rm ${OBJ_DIR} -rf
+	rm ${DST_DIR} -rf

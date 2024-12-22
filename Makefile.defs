@@ -31,8 +31,7 @@ LDFLAGS = \
 
 ifdef RELEASE
 CXXFLAGS += \
-	-O2 \
-	-flto
+	-O2
 else
 CXXFLAGS += \
 	-O0 \
